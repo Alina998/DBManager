@@ -28,78 +28,92 @@ def get_vacancies_data():
 
 def create_database(database_name: str, params: dict) -> None:
     """ Функция для создания БД и таблиц в БД. """
-    conn = psycopg2.connect(dbname='postgres', **params)
-    conn.autocommit = True
-    cur = conn.cursor()
+    try:
+        conn = psycopg2.connect(dbname='postgres', **params)
+        conn.autocommit = True
+        cur = conn.cursor()
 
-    cur.execute(f'DROP DATABASE IF EXISTS {database_name}')
-    cur.execute(f'CREATE DATABASE {database_name}')
+        cur.execute(f'DROP DATABASE IF EXISTS {database_name}')
+        cur.execute(f'CREATE DATABASE {database_name}')
 
-    conn.close()
+        conn.close()
 
-    conn = psycopg2.connect(dbname=database_name, **params)
+        conn = psycopg2.connect(dbname=database_name, **params)
 
-    with conn.cursor() as cur:
-        cur.execute("""
-            CREATE TABLE employers (
-                employer_id INTEGER,
-                employer_name TEXT not null,
-                employer_area TEXT not null,
-                url TEXT,
-                open_vacancies INTEGER
-            )
-        """)
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE employers (
+                    employer_id INTEGER,
+                    employer_name TEXT not null,
+                    employer_area TEXT not null,
+                    url TEXT,
+                    open_vacancies INTEGER
+                )
+            """)
 
-    with conn.cursor() as cur:
-        cur.execute("""
-            CREATE TABLE vacancy (
-                vacancy_id INTEGER,
-                vacancy_name VARCHAR,
-                vacancy_area VARCHAR,
-                salary INTEGER,
-                employer_id INTEGER,
-                vacancy_url VARCHAR
-            )
-        """)
-
-    conn.commit()
-    conn.close()
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE vacancies (
+                    vacancy_id INTEGER,
+                    vacancy_name VARCHAR,
+                    vacancy_area VARCHAR,
+                    salary FLOAT,
+                    employer_id INTEGER,
+                    vacancy_url VARCHAR
+                )
+            """)
+    except Exception as e:
+        print(f"Ошибка подключения к базе данных: {e}")
+        raise
+    finally:
+        if conn:
+            conn.commit()
+            conn.close()
 
 
 def save_employers_to_database(employers_data: list[dict[str, Any]], database_name: str, params: dict) -> None:
     """ Функция для заполнения таблицы компаний в БД. """
-    conn = psycopg2.connect(dbname=database_name, **params)
+    try:
+        conn = psycopg2.connect(dbname=database_name, **params)
 
-    with conn.cursor() as cur:
-        for employer in employers_data:
-            cur.execute("""
-                INSERT INTO employers (employer_id, employer_name, employer_area, url, open_vacancies)
-                VALUES (%s, %s, %s, %s, %s) """,
-                (employer['id'], employer['name'], employer['area']['name'], employer['alternate_url'], employer['open_vacancies']))
-
-    conn.commit()
-    conn.close()
+        with conn.cursor() as cur:
+            for employer in employers_data:
+                cur.execute("""
+                    INSERT INTO employers (employer_id, employer_name, employer_area, url, open_vacancies)
+                    VALUES (%s, %s, %s, %s, %s) """,
+                    (employer['id'], employer['name'], employer['area']['name'], employer['alternate_url'], employer['open_vacancies']))
+    except Exception as e:
+        print(f"Ошибка подключения к базе данных: {e}")
+        raise
+    finally:
+        if conn:
+            conn.commit()
+            conn.close()
 
 
 def save_vacancies_to_database(vacancies_data: list[dict[str, Any]], database_name: str, params: dict) -> None:
     """ Функция для заполнения таблицы вакансий в БД. """
+    try:
+        conn = psycopg2.connect(dbname=database_name, **params)
 
-    conn = psycopg2.connect(dbname=database_name, **params)
-
-    with conn.cursor() as cur:
-        for vacancy in vacancies_data:
-            if vacancy['salary'] is None or vacancy['salary']['from'] is None:
-                cur.execute("""
-                   INSERT INTO vacancy (vacancy_id, vacancy_name, vacancy_area, salary, employer_id, vacancy_url)
-                   VALUES (%s, %s, %s, %s, %s, %s) """,
-                    (vacancy.get('id'), vacancy['name'], vacancy['area']['name'], 0, vacancy['employer']['id'],
-                    vacancy['alternate_url']))
-            else:
-                cur.execute("""
-                    INSERT INTO vacancy (vacancy_id, vacancy_name, vacancy_area, salary, employer_id, vacancy_url)
-                    VALUES (%s, %s, %s, %s, %s, %s) """,
-                    (vacancy.get('id'), vacancy['name'], vacancy['area']['name'], vacancy['salary']['from'],
-                    vacancy['employer']['id'], vacancy['alternate_url']))
-
-    conn.commit()
-    conn.close()
+        with conn.cursor() as cur:
+            for vacancy in vacancies_data:
+                if vacancy['salary'] is None or vacancy['salary']['from'] is None:
+                    cur.execute("""
+                       INSERT INTO vacancy (vacancy_id, vacancy_name, vacancy_area, salary, employer_id, vacancy_url)
+                       VALUES (%s, %s, %s, %s, %s, %s) """,
+                        (vacancy.get('id'), vacancy['name'], vacancy['area']['name'], 0, vacancy['employer']['id'],
+                        vacancy['alternate_url']))
+                else:
+                    cur.execute("""
+                        INSERT INTO vacancy (vacancy_id, vacancy_name, vacancy_area, salary, employer_id, vacancy_url)
+                        VALUES (%s, %s, %s, %s, %s, %s) """,
+                        (vacancy.get('id'), vacancy['name'], vacancy['area']['name'], vacancy['salary']['from'],
+                        vacancy['employer']['id'], vacancy['alternate_url']))
+    except Exception as e:
+        print(f"Ошибка подключения к базе данных: {e}")
+        raise
+    finally:
+        if conn:
+            conn.commit()
+            conn.close()
